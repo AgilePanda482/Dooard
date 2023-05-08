@@ -39,9 +39,9 @@ template<class T> inline Print &operator <<(Print &obj, T arg) {
 #define HREF_GPIO_NUM  23
 #define PCLK_GPIO_NUM  22
 //Pines para MicroSD
-#define CLK 14
+/*#define CLK 14
 #define CMD 15
-#define DATA0 2
+#define DATA0 2*/
 
 WiFiClientSecure clientTCP;
 UniversalTelegramBot DOARD(token, clientTCP);
@@ -51,41 +51,42 @@ const byte buzzPin = 13;
 const byte dt = 50;
 byte leerBoton;
 bool mandarFoto = false;
+String Depuracion;
 
 //Revisa por un nuevo mensaje cada 1 segundo
 const int botRequestDelay = 1000;
 unsigned long lastTimeBotRan;
 
 void setup(){
-    Serial.begin(115200);
-    Serial << "Iniciando...";
+  Serial.begin(115200);
+  Serial << "Iniciando...";
 
-    pinMode(botonPin, INPUT_PULLUP);
-    pinMode(buzzPin, OUTPUT);
-    pinMode(33, OUTPUT);
+  pinMode(botonPin, INPUT_PULLUP);
+  pinMode(buzzPin, OUTPUT);
+  pinMode(33, OUTPUT);  
 
-    configuracionInicialCamara();
+  //Declaro que el ESP32 se conectara a una red
+  WiFi.mode(WIFI_STA);
+  Serial << "\n" << "Conectando a " << ssid;
+  WiFi.begin(ssid, password);
+  clientTCP.setCACert(TELEGRAM_CERTIFICATE_ROOT); // Agregando certificacion root para api.telegram.org
 
-    //Declaro que el ESP32 se conectara a una red
-    WiFi.mode(WIFI_STA);
-    Serial << "\n" << "Conectando a " << ssid;
-    WiFi.begin(ssid, password);
-    clientTCP.setCACert(TELEGRAM_CERTIFICATE_ROOT); // Agregando certificacion root para api.telegram.org
+  //Conexion hacia internet...
+  while(WiFi.status() != WL_CONNECTED) {
+    Serial << ".";
+    delay(500);
+  }
+  Serial << "\n" << "ESP32-CAM dirección IP: " << WiFi.localIP();
 
-    //Conexion hacia internet...
-    while(WiFi.status() != WL_CONNECTED) {
-        Serial << ".";
-        delay(500);
-    }
-    Serial << "\n" << "ESP32-CAM dirección IP: " << WiFi.localIP();
+  configuracionInicialCamara();
 }
 
 void loop(){
-    digitalWrite(33, LOW);
-    //Variable necesaria para enviar mensajes
+  digitalWrite(33, LOW);
+  //Variable necesaria para enviar mensajes
     
-    leerBoton = digitalRead(botonPin);
-    Serial.println(leerBoton);
+  leerBoton = digitalRead(botonPin);
+  Serial.println(leerBoton);
     delay(dt);
 
     //Si el boton se aprieta, se activara el Buzzer y mandara un mensaje a telegram.
@@ -98,73 +99,74 @@ void loop(){
         digitalWrite(buzzPin, LOW);
     }*/
 
-    if (mandarFoto) {
-      Serial << "Preparando foto...";
-      enviarFotoTelegram();
-      mandarFoto = false;
+  if (mandarFoto) {
+    DOARD.sendMessage(IDchat, "Preparando foto..."); 
+    enviarFotoTelegram();
+    mandarFoto = false;
+  }
+  //Retraso para buscar nuevos mensajes en telegram
+  if (millis() > lastTimeBotRan + botRequestDelay) {
+    int numNuevosMensajes = DOARD.getUpdates(DOARD.last_message_received + 1);
+    while (numNuevosMensajes) {
+      Serial.println("got response");
+      gestionarNuevosMensajes(numNuevosMensajes);
+      numNuevosMensajes = DOARD.getUpdates(DOARD.last_message_received + 1);
     }
-    //Retraso para buscar nuevos mensajes en telegram
-    if (millis() > lastTimeBotRan + botRequestDelay) {
-      int numNuevosMensajes = DOARD.getUpdates(DOARD.last_message_received + 1);
-      while (numNuevosMensajes) {
-        Serial.println("got response");
-        gestionarNuevosMensajes(numNuevosMensajes);
-        numNuevosMensajes = DOARD.getUpdates(DOARD.last_message_received + 1);
-      }
-      lastTimeBotRan = millis();
-    }
+
+    lastTimeBotRan = millis();
+  }
 }
 
 /*-------------------------------------------------------------------*/
 
 void configuracionInicialCamara(){
 
-    //configuración de la cámara en un objeto camera_config_t
-    camera_config_t config;
-    config.ledc_channel = LEDC_CHANNEL_0;
-    config.ledc_timer = LEDC_TIMER_0;
-    config.pin_d0 = Y2_GPIO_NUM;
-    config.pin_d1 = Y3_GPIO_NUM;
-    config.pin_d2 = Y4_GPIO_NUM;
-    config.pin_d3 = Y5_GPIO_NUM;
-    config.pin_d4 = Y6_GPIO_NUM;
-    config.pin_d5 = Y7_GPIO_NUM;
-    config.pin_d6 = Y8_GPIO_NUM;
-    config.pin_d7 = Y9_GPIO_NUM;
-    config.pin_xclk = XCLK_GPIO_NUM;
-    config.pin_pclk = PCLK_GPIO_NUM;
-    config.pin_vsync = VSYNC_GPIO_NUM;
-    config.pin_href = HREF_GPIO_NUM;
-    config.pin_sscb_sda = SIOD_GPIO_NUM;
-    config.pin_sscb_scl = SIOC_GPIO_NUM;
-    config.pin_pwdn = PWDN_GPIO_NUM;
-    config.pin_reset = RESET_GPIO_NUM;
-    config.xclk_freq_hz = 20000000;
-    config.pixel_format = PIXFORMAT_JPEG;
+  //configuración de la cámara en un objeto camera_config_t
+  camera_config_t config;
+  config.ledc_channel = LEDC_CHANNEL_0;
+  config.ledc_timer = LEDC_TIMER_0;
+  config.pin_d0 = Y2_GPIO_NUM;
+  config.pin_d1 = Y3_GPIO_NUM;
+  config.pin_d2 = Y4_GPIO_NUM;
+  config.pin_d3 = Y5_GPIO_NUM;
+  config.pin_d4 = Y6_GPIO_NUM;
+  config.pin_d5 = Y7_GPIO_NUM;
+  config.pin_d6 = Y8_GPIO_NUM;
+  config.pin_d7 = Y9_GPIO_NUM;
+  config.pin_xclk = XCLK_GPIO_NUM;
+  config.pin_pclk = PCLK_GPIO_NUM;
+  config.pin_vsync = VSYNC_GPIO_NUM;
+  config.pin_href = HREF_GPIO_NUM;
+  config.pin_sscb_sda = SIOD_GPIO_NUM;
+  config.pin_sscb_scl = SIOC_GPIO_NUM;
+  config.pin_pwdn = PWDN_GPIO_NUM;
+  config.pin_reset = RESET_GPIO_NUM;
+  config.xclk_freq_hz = 20000000;
+  config.pixel_format = PIXFORMAT_JPEG;
 
-    //Configuraciónes especiales si la placa tiene PSRAM:
-    if(psramFound()){
-        config.frame_size = FRAMESIZE_UXGA; // FRAMESIZE_ + QVGA|CIF|VGA|SVGA|XGA|SXGA|UXGA
-        config.jpeg_quality = 10;
-        config.fb_count = 2;
-
+  //Configuraciónes especiales si la placa tiene PSRAM:
+  if(psramFound()){
+    config.frame_size = FRAMESIZE_UXGA; // FRAMESIZE_ + QVGA|CIF|VGA|SVGA|XGA|SXGA|UXGA
+    config.jpeg_quality = 10;
+    config.fb_count = 2;
     //En caso contrario:
-    }else {
-        config.frame_size = FRAMESIZE_SVGA;
-        config.jpeg_quality = 12;
-        config.fb_count = 1;
-    }
+  }else{
+    config.frame_size = FRAMESIZE_SVGA;
+    config.jpeg_quality = 12;
+    config.fb_count = 1;
+  }
 
-    //Iniciar camara
-    esp_err_t err = esp_camera_init(&config);
-    if (err != ESP_OK) {
-        Serial.printf("Error al iniciar la camara con codigo de error 0x%x", err);
-        return;
-    }
+  //Iniciar camara
+  esp_err_t err = esp_camera_init(&config);
+  if (err != ESP_OK) {
+    Serial.printf("Error al iniciar la camara con codigo de error 0x%x", err);
+    DOARD.sendMessage(IDchat, "¡Error!", "");
+    return;
+  }
 
-    //Disminuye el tamaño de los fotogramas para aumentar la velocidad de fotogramas inicial
-    sensor_t * s = esp_camera_sensor_get();
-    s->set_framesize(s, FRAMESIZE_CIF);  // UXGA|SXGA|XGA|SVGA|VGA|CIF|QVGA|HQVGA|QQVGA
+  //Disminuye el tamaño de los fotogramas para aumentar la velocidad de fotogramas inicial
+  sensor_t * s = esp_camera_sensor_get();
+  s->set_framesize(s, FRAMESIZE_CIF);  // UXGA|SXGA|XGA|SVGA|VGA|CIF|QVGA|HQVGA|QQVGA
 }
 
 /*---------------------------------------------------------*/
@@ -189,13 +191,7 @@ void gestionarNuevosMensajes(int numNuevosMensajes) {
     //from_name es el nombre de usuario en telegram
     String from_name = DOARD.messages[i].from_name;
     if (text == "/start") {
-      /*String welcome = "Welcome , " + from_name + "\n";
-      welcome += "Use the following commands to interact with the ESP32-CAM \n";
-      welcome += "/photo : takes a new photo\n";
-      welcome += "/flash : toggles flash LED \n";
-      DOARD.sendMessage(IDchat, welcome, "");}*/
-
-      DOARD.sendMessage(IDchat, "Welcome" + from_name, "");
+      DOARD.sendMessage(IDchat, "Bienvenido " + from_name, "");
       delay(500);
       DOARD.sendMessage(IDchat, "Usa los siguientes comandos para interactuar con el ESP32-CAM: ", "");
       delay(500);
@@ -204,7 +200,6 @@ void gestionarNuevosMensajes(int numNuevosMensajes) {
     }
     if (text == "/photo") {
       mandarFoto = true;
-      Serial << "Solicitud de foto entrante";
     }
   }
 }
@@ -222,20 +217,20 @@ String enviarFotoTelegram() {
   fb = esp_camera_fb_get();
 
   if(!fb) {
-    Serial << "Captura de Camara Fallida";
     delay(1000);
+    DOARD.sendMessage(IDchat, "¡Error al tomar la foto!");
+    DOARD.sendMessage(IDchat, "Vuelve a intentarlo.");
     ESP.restart();
     return "Captura de Camara Fallida";
   }  
   
-  Serial << "Conectando hacia " << String(myDomain);
+  Serial.println("Connect to " + String(myDomain));
 
 
   if (clientTCP.connect(myDomain, 443)) {
-    Serial << "Conexion Exitosa";
     
     //???
-    String head = "--RandomNerdTutorials\r\nContent-Disposition: form-data; name=\"IDchat\"; \r\n\r\n" + IDchat + "\r\n--RandomNerdTutorials\r\nContent-Disposition: form-data; name=\"photo\"; filename=\"esp32-cam.jpg\"\r\nContent-Type: image/jpeg\r\n\r\n";
+    String head = "--RandomNerdTutorials\r\nContent-Disposition: form-data; name=\"chat_id\"; \r\n\r\n" + IDchat + "\r\n--RandomNerdTutorials\r\nContent-Disposition: form-data; name=\"photo\"; filename=\"esp32-cam.jpg\"\r\nContent-Type: image/jpeg\r\n\r\n";
     String tail = "\r\n--RandomNerdTutorials--\r\n";
 
     //longitud de los datos de la imagen capturada por la cámara.
@@ -246,87 +241,73 @@ String enviarFotoTelegram() {
     uint16_t totalLen = imageLen + extraLen;
 
     //Se construye el encabezado HTTP que se usara para enviar imagenes
-    clientTCP << "POST /bot" << token << "/sendphoto HTTP/1.1";
-    clientTCP << "Host: " << String(myDomain) << "\n Content-length: " << String(totalLen);
-    clientTCP << "Content-Type: multipart/form-data; boundary=RandomNerdTutorials" << "\n" << head;
-
-    /*clientTCP.println("POST /bot"+token+"/sendPhoto HTTP/1.1");
+    clientTCP.println("POST /bot"+token+"/sendPhoto HTTP/1.1");
     clientTCP.println("Host: " + String(myDomain));
     clientTCP.println("Content-Length: " + String(totalLen));
     clientTCP.println("Content-Type: multipart/form-data; boundary=RandomNerdTutorials");
     clientTCP.println();
-    clientTCP.print(head);*/
+    clientTCP.print(head);
 
     //puntero a la memoria del búfer de imagen
     uint8_t *fbBuf = fb->buf;
     //tamaño del búfer de imagen en bytes
     size_t fbLen = fb->len;
 
-    for (size_t n = 0; n < fbLen; n = n + 1024) {
-      //Se verifica si la longitud de la imagen es multiplo de 1024
+
+    for (size_t n = 0; n < fbLen; n += 1024) {
       if (n + 1024 < fbLen) {
         clientTCP.write(fbBuf, 1024);
         fbBuf += 1024;
-        //En caso contrario se envia un bloque final de tamaño menor que 1024 bytes.
-      }else if (fbLen % 1024 > 0) {
-        size_t remainder = fbLen%1024;
+
+      } else if (fbLen % 1024 > 0) {
+
+        size_t remainder = fbLen % 1024;
         clientTCP.write(fbBuf, remainder);
       }
-    }  
-    
-    clientTCP << tail;
-    
+    }
+
+    clientTCP.print(tail);
+      
     //liberamos memoria
     esp_camera_fb_return(fb);
-    
-    int waitTime = 10000;   // espera 10 segundos
+      
+    int waitTime = 10000;   // timeout 10 seconds
     long startTimer = millis();
     boolean state = false;
     
     // Espera y procesamiento de los datos del cliente TCP
-    while ( (startTimer + waitTime) > millis() ){
-      Serial << ".";
-      delay(100);
-
-      //Detecta si hay nuevos datos disponibles para leer
-      while (clientTCP.available()){
+    while ((startTimer + waitTime) > millis()){
+      Serial.print(".");
+      delay(100);      
+    
+      while (clientTCP.available()) {
         char c = clientTCP.read();
-
-        //Si se ha recibido el encabezado HTTP concatena en la variable c
-        if (state == true) {
-          getBody += String(c);
+        
+        if (state==true) {
+          getBody += String(c);        
         }
         if (c == '\n') {
-          //Si el HTTP aún no se ha recibido por completo, se marca como recibido
-          if (getAll.length() == 0){
-            state = true;
+          if (getAll.length() == 0) {
+            state = true; 
           } 
-          //Y se reinicia el encabezado HTTP
           getAll = "";
-
-          //Si no es un \r ni \n concatena en el encabezado HTTP
-        } else if (c != '\r'){
+        } 
+        else if (c != '\r') {
           getAll += String(c);
         }
-
-        // Reinicia el temporizador de espera
         startTimer = millis();
-
       }
-      
-      //Si recibio todo el cuerpo de la respuesta HTTP, sale del while
-      if (getBody.length() > 0){ 
+      if (getBody.length() > 0) {
         break;
       }
     }
-    //Detiene la conexion TCP e imprime la respuesta HTTP
     clientTCP.stop();
-    Serial << getBody;
-  }else {
-    getBody = "Connected to api.telegram.org failed.";
-    Serial << "Connected to api.telegram.org failed.";
+    Serial.println(getBody);
+  } else {
+    getBody="Connected to api.telegram.org failed.";
+    Serial.println("Connected to api.telegram.org failed.");
   }
 
-  //retorna la respuesta HTTP
   return getBody;
+
 }
