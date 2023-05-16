@@ -47,7 +47,7 @@ UniversalTelegramBot DOOARD(token, clientTCP);
 const int botRequestDelay = 1000;
 const byte botonPin = 12;
 const byte buzzPin = 13;
-const byte dt = 50;
+const byte dt = 100;
 byte leerBoton;
 bool mandarFoto = false;
 bool EstadoFlash = LOW;
@@ -87,22 +87,24 @@ void setup(){
 }
 
 void loop(){
+  //Prender led rojo del ESP32-CAM
   digitalWrite(33, LOW);
-  //Variable necesaria para enviar mensajes
     
-  /*leerBoton = digitalRead(botonPin);
-  Serial.println(leerBoton);
-    delay(dt);*/
+  leerBoton = digitalRead(botonPin);
+  //Serial.println(leerBoton);
+  //delay(dt);
 
     //Si el boton se aprieta, se activara el Buzzer y mandara un mensaje a telegram.
-    /*if (leerBoton == 0) {
+    if (leerBoton == 0) {
         digitalWrite(buzzPin, HIGH);
         DOOARD.sendMessage(IDchat, "Actividad detectada");
         delay(dt);
+        mandarFoto = true;
+        digitalWrite(buzzPin, LOW);
     }
     else{
         digitalWrite(buzzPin, LOW);
-    }*/
+    }
 
   if (mandarFoto) {
     DOOARD.sendMessage(IDchat, "Preparando foto..."); 
