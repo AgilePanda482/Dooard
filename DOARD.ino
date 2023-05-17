@@ -90,21 +90,10 @@ void loop(){
   //Prender led rojo del ESP32-CAM
   digitalWrite(33, LOW);
     
-  leerBoton = digitalRead(botonPin);
   //Serial.println(leerBoton);
   //delay(dt);
 
     //Si el boton se aprieta, se activara el Buzzer y mandara un mensaje a telegram.
-    if (leerBoton == 0) {
-        digitalWrite(buzzPin, HIGH);
-        DOOARD.sendMessage(IDchat, "Actividad detectada");
-        delay(dt);
-        mandarFoto = true;
-        digitalWrite(buzzPin, LOW);
-    }
-    else{
-        digitalWrite(buzzPin, LOW);
-    }
 
   if (mandarFoto) {
     DOOARD.sendMessage(IDchat, "Preparando foto..."); 
@@ -122,6 +111,19 @@ void loop(){
 
     lastTimeBotRan = millis();
   }
+  leerBoton = digitalRead(botonPin);
+
+  if (leerBoton == 0) {
+    digitalWrite(buzzPin, HIGH);
+    DOOARD.sendMessage(IDchat, "Actividad detectada");
+    delay(dt);
+    mandarFoto = true;
+    digitalWrite(buzzPin, LOW);
+    }
+    else{
+     digitalWrite(buzzPin, LOW);
+    }
+
 }
 
 /*-------------------------------------------------------------------*/
